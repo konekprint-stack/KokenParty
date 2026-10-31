@@ -65,7 +65,7 @@
 
   <div class="card">
     <label for="filePicker" id="btnUploadLabel" class="btn-upload">📸 Tomar o Subir Fotos</label>
-    <input type="file" id="filePicker" accept="image/*" multiple onchange="startUpload(this.files)">
+    <input type="file" id="filePicker" accept="image/*" multiple>
     <div id="status"></div>
     <div class="progress-wrapper" id="progressWrapper">
       <div class="progress-bar" id="progressBar"></div>
@@ -75,30 +75,54 @@
 
   <div class="section-header">
     <span class="section-title">Galería del Evento</span>
-    <button class="btn-refresh" onclick="loadGallery()">🔄 Actualizar</button>
+    <button class="btn-refresh" id="btnRefresh">🔄 Actualizar</button>
   </div>
 
   <div id="gallery" class="grid">
     <p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>
   </div>
 
-  <div id="imageModal" onclick="closeModal()">
-    <button class="modal-close" onclick="closeModal()">✕</button>
+  <div id="imageModal">
+    <button class="modal-close" id="modalCloseBtn">✕</button>
     <img id="modalImg" src="" alt="Foto ampliada">
   </div>
   
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlVebJpGHl5N1axZyA5herAgp5HiqYZHpNayxV043IITadQMeih3_1Njqiy--um7_x/exec";
-    const EVENT_TOKEN = "BODA2026";
-    const WHATSAPP_NUMERO = "525512345678"; 
-    const WHATSAPP_MENSAJE = "Hola KonekParty";
+    var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlVebJpGHl5N1axZyA5herAgp5HiqYZHpNayxV043IITadQMeih3_1Njqiy--um7_x/exec";
+    var EVENT_TOKEN = "BODA2026";
+    var WHATSAPP_NUMERO = "525512345678"; 
+    var WHATSAPP_MENSAJE = "Hola KonekParty";
 
-    let marcoVertical = null;
-    let marcoHorizontal = null;
-    let cargaMarcosPromesa = null;
-    let subiendoActualmente = false;
+    var marcoVertical = null;
+    var marcoHorizontal = null;
+    var cargaMarcosPromesa = null;
+    var subiendoActualmente = false;
 
-    window.addEventListener('DOMContentLoaded', function() {
+    // Configuración inicial de eventos al cargar el DOM
+    document.addEventListener('DOMContentLoaded', function() {
+      // Vinculamos listeners por JavaScript puro para evitar ReferenceErrors en HTML
+      var filePicker = document.getElementById('filePicker');
+      if (filePicker) {
+        filePicker.addEventListener('change', function() {
+          startUpload(this.files);
+        });
+      }
+
+      var btnRefresh = document.getElementById('btnRefresh');
+      if (btnRefresh) {
+        btnRefresh.addEventListener('click', loadGallery);
+      }
+
+      var modalCloseBtn = document.getElementById('modalCloseBtn');
+      if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeModal);
+      }
+
+      var imageModal = document.getElementById('imageModal');
+      if (imageModal) {
+        imageModal.addEventListener('click', closeModal);
+      }
+
       loadGallery();
       cargaMarcosPromesa = obtenerMarcosServidor();
     });
@@ -110,11 +134,10 @@
       }
     });
 
-    // 1. CARGA JSONP DE DATOS
     function fetchJSONP(url) {
       return new Promise(function(resolve, reject) {
-        const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
-        const script = document.createElement('script');
+        var callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+        var script = document.createElement('script');
 
         window[callbackName] = function(data) {
           delete window[callbackName];
@@ -128,7 +151,7 @@
           reject(new Error("No se pudo conectar con el servidor"));
         };
 
-        const separator = url.indexOf('?') >= 0 ? '&' : '?';
+        var separator = url.indexOf('?') >= 0 ? '&' : '?';
         script.src = url + separator + 'callback=' + callbackName;
         document.body.appendChild(script);
       });
@@ -139,11 +162,11 @@
         fetchJSONP(SCRIPT_URL + "?action=getFrames&access=" + EVENT_TOKEN)
           .then(function(res) {
             if (!res || !res.success) {
-              reject(new Error(res ? res.error : "No se pudieron obtener las plantillas"));
+              reject(new Error(res ? res.error : "No se pudieron obtener plantillas"));
               return;
             }
 
-            let listos = 0;
+            var listos = 0;
             function alCargar() {
               listos++;
               if (listos === 2) resolve(true);
@@ -155,8 +178,8 @@
             marcoVertical.onload = alCargar;
             marcoHorizontal.onload = alCargar;
 
-            marcoVertical.onerror = function() { reject(new Error("Error al cargar plantilla vertical")); };
-            marcoHorizontal.onerror = function() { reject(new Error("Error al cargar plantilla horizontal")); };
+            marcoVertical.onerror = function() { reject(new Error("Error cargando marco vertical")); };
+            marcoHorizontal.onerror = function() { reject(new Error("Error cargando marco horizontal")); };
 
             marcoVertical.src = res.verticalUrl;
             marcoHorizontal.src = res.horizontalUrl;
@@ -166,19 +189,19 @@
             }
           })
           .catch(function(err) {
-            reject(new Error("Fallo de conexión en plantillas: " + err.message));
+            reject(new Error("Fallo en marcos: " + err.message));
           });
       });
     }
 
     function loadGallery() {
-      const container = document.getElementById('gallery');
+      var container = document.getElementById('gallery');
       container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
 
       fetchJSONP(SCRIPT_URL + "?action=getGallery&access=" + EVENT_TOKEN)
         .then(function(res) {
           if (!res || !res.success) {
-            container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta del servidor') + '</p>';
+            container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta') + '</p>';
             return;
           }
           if (!res.list || res.list.length === 0) {
@@ -193,31 +216,32 @@
           }).join('');
         })
         .catch(function(err) {
-          container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar con Drive: ' + err.message + '</p>';
+          container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar: ' + err.message + '</p>';
         });
     }
 
     function openModal(id) {
-      const modal = document.getElementById('imageModal');
-      const img = document.getElementById('modalImg');
+      var modal = document.getElementById('imageModal');
+      var img = document.getElementById('modalImg');
       img.src = "https://drive.google.com/thumbnail?sz=w1200&id=" + id;
       modal.style.display = 'flex';
     }
 
     function closeModal() {
-      document.getElementById('imageModal').style.display = 'none';
-      document.getElementById('modalImg').src = "";
+      var modal = document.getElementById('imageModal');
+      var img = document.getElementById('modalImg');
+      modal.style.display = 'none';
+      img.src = "";
     }
 
-    // 2. FUNCIÓN DE SUBIDA (startUpload)
     async function startUpload(files) {
       if (!files || files.length === 0) return;
 
-      const status = document.getElementById('status');
-      const pWrapper = document.getElementById('progressWrapper');
-      const pBar = document.getElementById('progressBar');
-      const warningText = document.getElementById('uploadWarning');
-      const uploadLabel = document.getElementById('btnUploadLabel');
+      var status = document.getElementById('status');
+      var pWrapper = document.getElementById('progressWrapper');
+      var pBar = document.getElementById('progressBar');
+      var warningText = document.getElementById('uploadWarning');
+      var uploadLabel = document.getElementById('btnUploadLabel');
 
       subiendoActualmente = true;
       uploadLabel.style.pointerEvents = "none";
@@ -226,16 +250,16 @@
       warningText.style.display = "block";
       pBar.style.width = "0%";
 
-      let subidasConExito = 0;
+      var subidasConExito = 0;
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
         status.style.color = "#38bdf8";
         status.innerText = '⏳ Procesando foto ' + (i + 1) + ' de ' + files.length + '...';
 
         try {
-          const originalBase64 = await readFileAsDataURL(file);
-          const framedBase64 = await processWithFrame(file);
+          var originalBase64 = await readFileAsDataURL(file);
+          var framedBase64 = await processWithFrame(file);
 
           status.innerText = '☁️ Guardando respaldo ' + (i + 1) + ' de ' + files.length + '...';
           await uploadToAppsScript("uploadBackup", originalBase64, "RAW_" + file.name);
@@ -245,13 +269,13 @@
 
           subidasConExito++;
         } catch (e) {
-          console.error("Fallo puntual en imagen:", e);
+          console.error("Fallo en imagen:", e);
           status.style.color = "#f87171";
           status.innerText = '⚠️ Foto ' + (i + 1) + ' falló. Continuando con las demás...';
           await new Promise(function(r) { setTimeout(r, 2000); });
         }
 
-        const porcentaje = Math.round(((i + 1) / files.length) * 100);
+        var porcentaje = Math.round(((i + 1) / files.length) * 100);
         pBar.style.width = porcentaje + "%";
       }
 
@@ -280,9 +304,9 @@
 
     function readFileAsDataURL(file) {
       return new Promise(function(resolve, reject) {
-        const reader = new FileReader();
+        var reader = new FileReader();
         reader.onload = function(e) { resolve(e.target.result); };
-        reader.onerror = function() { reject(new Error("No se pudo leer el archivo original")); };
+        reader.onerror = function() { reject(new Error("No se pudo leer archivo original")); };
         reader.readAsDataURL(file);
       });
     }
@@ -294,16 +318,16 @@
       }
 
       return new Promise(function(resolve, reject) {
-        const reader = new FileReader();
-        reader.onerror = function() { reject(new Error("Error leyendo el archivo")); };
+        var reader = new FileReader();
+        reader.onerror = function() { reject(new Error("Error leyendo archivo")); };
         reader.onload = function(e) {
-          const userImg = new Image();
-          userImg.onerror = function() { reject(new Error("Formato de imagen inválido")); };
+          var userImg = new Image();
+          userImg.onerror = function() { reject(new Error("Formato inválido")); };
           userImg.onload = function() {
-            const waUrl = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(WHATSAPP_MENSAJE);
-            const qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=2&data=" + encodeURIComponent(waUrl);
+            var waUrl = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(WHATSAPP_MENSAJE);
+            var qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=2&data=" + encodeURIComponent(waUrl);
 
-            const qrImg = new Image();
+            var qrImg = new Image();
             qrImg.crossOrigin = "Anonymous";
             qrImg.onload = function() { renderizarTodo(qrImg); };
             qrImg.onerror = function() { renderizarTodo(null); };
@@ -311,40 +335,40 @@
 
             function renderizarTodo(loadedQr) {
               try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
 
-                const isLandscape = userImg.width > userImg.height;
-                const marcoActivo = isLandscape ? marcoHorizontal : marcoVertical;
+                var isLandscape = userImg.width > userImg.height;
+                var marcoActivo = isLandscape ? marcoHorizontal : marcoVertical;
 
-                const targetW = marcoActivo.naturalWidth || marcoActivo.width || (isLandscape ? 1920 : 1080);
-                const targetH = marcoActivo.naturalHeight || marcoActivo.height || (isLandscape ? 1080 : 1920);
+                var targetW = marcoActivo.naturalWidth || marcoActivo.width || (isLandscape ? 1920 : 1080);
+                var targetH = marcoActivo.naturalHeight || marcoActivo.height || (isLandscape ? 1080 : 1920);
                 canvas.width = targetW;
                 canvas.height = targetH;
 
                 ctx.fillStyle = "#030d42";
                 ctx.fillRect(0, 0, targetW, targetH);
 
-                const slotX = 0;
-                const slotY = targetH * (isLandscape ? 0.12 : 0.16);
-                const slotW = targetW;
-                const slotH = targetH * (isLandscape ? 0.74 : 0.70);
+                var slotX = 0;
+                var slotY = targetH * (isLandscape ? 0.12 : 0.16);
+                var slotW = targetW;
+                var slotH = targetH * (isLandscape ? 0.74 : 0.70);
 
-                const scale = Math.max(slotW / userImg.width, slotH / userImg.height);
-                const renderW = userImg.width * scale;
-                const renderH = userImg.height * scale;
-                const offsetX = slotX + (slotW - renderW) / 2;
-                const offsetY = slotY + (slotH - renderH) / 2;
+                var scale = Math.max(slotW / userImg.width, slotH / userImg.height);
+                var renderW = userImg.width * scale;
+                var renderH = userImg.height * scale;
+                var offsetX = slotX + (slotW - renderW) / 2;
+                var offsetY = slotY + (slotH - renderH) / 2;
 
                 ctx.drawImage(userImg, offsetX, offsetY, renderW, renderH);
                 ctx.drawImage(marcoActivo, 0, 0, targetW, targetH);
 
-                const tituloEvento = "Nuestra Boda • Sofía & Carlos";
-                const subtituloEvento = "24 de Octubre de 2026";
-                const firmaMarca = "KonekParty Live";
+                var tituloEvento = "Nuestra Boda • Sofía & Carlos";
+                var subtituloEvento = "24 de Octubre de 2026";
+                var firmaMarca = "KonekParty Live";
 
                 if (isLandscape) {
-                  const footerY = targetH * 0.915;
+                  var footerY = targetH * 0.915;
 
                   ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
                   ctx.shadowBlur = 6;
@@ -352,37 +376,37 @@
                   ctx.shadowOffsetY = 2;
 
                   ctx.fillStyle = "#ffffff";
-                  const titleSizeH = Math.max(22, Math.round(targetW * 0.020));
+                  var titleSizeH = Math.max(22, Math.round(targetW * 0.020));
                   ctx.font = 'bold ' + titleSizeH + 'px sans-serif';
                   ctx.textAlign = "left";
                   ctx.textBaseline = "middle";
                   ctx.fillText(tituloEvento, targetW * 0.06, footerY - 14);
 
                   ctx.fillStyle = "#cbd5e1";
-                  const subSizeH = Math.max(13, Math.round(titleSizeH * 0.58));
+                  var subSizeH = Math.max(13, Math.round(titleSizeH * 0.58));
                   ctx.font = '500 ' + subSizeH + 'px sans-serif';
                   ctx.fillText(subtituloEvento, targetW * 0.06, footerY + 16);
 
                   ctx.shadowColor = "transparent";
-                  const qrSizeH = 80;
-                  const qrXH = targetW * 0.72;
-                  const qrYH = footerY - (qrSizeH / 2);
+                  var qrSizeH = 80;
+                  var qrXH = targetW * 0.72;
+                  var qrYH = footerY - (qrSizeH / 2);
 
                   if (loadedQr) {
-                    const padH = 5;
+                    var padH = 5;
                     ctx.fillStyle = "#ffffff";
                     ctx.fillRect(qrXH - padH, qrYH - padH, qrSizeH + (padH * 2), qrSizeH + (padH * 2));
                     ctx.drawImage(loadedQr, qrXH, qrYH, qrSizeH, qrSizeH);
 
                     ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
-                    const brandSizeH = Math.max(14, Math.round(targetW * 0.012));
+                    var brandSizeH = Math.max(14, Math.round(targetW * 0.012));
                     ctx.font = 'bold ' + brandSizeH + 'px sans-serif';
                     ctx.textAlign = "left";
                     ctx.textBaseline = "middle";
                     ctx.fillText(firmaMarca, qrXH + qrSizeH + 14, footerY - 10);
 
                     ctx.fillStyle = "#94a3b8";
-                    const tipSizeH = Math.max(11, Math.round(brandSizeH * 0.75));
+                    var tipSizeH = Math.max(11, Math.round(brandSizeH * 0.75));
                     ctx.font = '500 ' + tipSizeH + 'px sans-serif';
                     ctx.fillText("Escanea para informes", qrXH + qrSizeH + 14, footerY + 12);
                   }
@@ -393,39 +417,39 @@
                   ctx.shadowOffsetY = 2;
 
                   ctx.fillStyle = "#ffffff";
-                  const fontTitleSize = Math.max(22, Math.round(targetW * 0.043));
+                  var fontTitleSize = Math.max(22, Math.round(targetW * 0.043));
                   ctx.font = 'bold ' + fontTitleSize + 'px sans-serif';
                   ctx.textAlign = "center";
                   ctx.textBaseline = "middle";
                   ctx.fillText(tituloEvento, targetW / 2, targetH * 0.835);
 
                   ctx.fillStyle = "#cbd5e1";
-                  const fontSubSize = Math.max(13, Math.round(fontTitleSize * 0.54));
+                  var fontSubSize = Math.max(13, Math.round(fontTitleSize * 0.54));
                   ctx.font = '500 ' + fontSubSize + 'px sans-serif';
                   ctx.fillText(subtituloEvento, targetW / 2, targetH * 0.868);
 
                   ctx.shadowColor = "transparent";
-                  const baseY = targetH * 0.945;
-                  const qrSize = Math.max(90, Math.round(targetW * 0.10));
+                  var baseY = targetH * 0.945;
+                  var qrSize = Math.max(90, Math.round(targetW * 0.10));
 
                   if (loadedQr) {
-                    const padding = 5;
-                    const qrX = (targetW / 2) - qrSize - 40;
-                    const qrY = baseY - (qrSize / 2);
+                    var padding = 5;
+                    var qrX = (targetW / 2) - qrSize - 40;
+                    var qrY = baseY - (qrSize / 2);
 
                     ctx.fillStyle = "#ffffff";
                     ctx.fillRect(qrX - padding, qrY - padding, qrSize + (padding * 2), qrSize + (padding * 2));
                     ctx.drawImage(loadedQr, qrX, qrY, qrSize, qrSize);
 
                     ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
-                    const fontBrandSize = Math.max(14, Math.round(targetW * 0.024));
+                    var fontBrandSize = Math.max(14, Math.round(targetW * 0.024));
                     ctx.font = 'bold ' + fontBrandSize + 'px sans-serif';
                     ctx.textAlign = "left";
                     ctx.textBaseline = "middle";
                     ctx.fillText(firmaMarca, qrX + qrSize + 14, baseY - 8);
 
                     ctx.fillStyle = "#94a3b8";
-                    const fontTipSize = Math.max(11, Math.round(fontBrandSize * 0.72));
+                    var fontTipSize = Math.max(11, Math.round(fontBrandSize * 0.72));
                     ctx.font = '500 ' + fontTipSize + 'px sans-serif';
                     ctx.fillText("Escanea para informes", qrX + qrSize + 14, baseY + 10);
                   }
@@ -443,7 +467,6 @@
       });
     }
 
-    // 3. ENVÍO SEGURO SIN BLOQUEOS CORS NI REDIRECCIONES
     function uploadToAppsScript(action, base64Data, fileName) {
       return fetch(SCRIPT_URL, {
         method: "POST",
