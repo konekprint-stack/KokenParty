@@ -493,61 +493,20 @@ function loadGallery() {
       });
     }
 
-   function uploadToAppsScript(action, base64Data, fileName) {
-  return new Promise(function(resolve, reject) {
-    try {
-      var iframeId = 'upload_target_' + Math.round(Math.random() * 100000);
-      var iframe = document.createElement('iframe');
-      iframe.id = iframeId;
-      iframe.name = iframeId;
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
+  function uploadToAppsScript(action, base64Data, fileName) {
+  var params = new URLSearchParams();
+  params.append("action", action);
+  params.append("data", base64Data);
+  params.append("name", fileName);
+  params.append("access", EVENT_TOKEN);
 
-      var form = document.createElement('form');
-      form.method = 'POST';
-      form.action = SCRIPT_URL;
-      form.target = iframeId;
-      form.style.display = 'none';
-
-      var campos = {
-        action: action,
-        data: base64Data,
-        name: fileName,
-        access: EVENT_TOKEN
-      };
-
-      for (var clave in campos) {
-        var input = document.createElement('textarea');
-        input.name = clave;
-        input.value = campos[clave];
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-
-      var limpiar = function() {
-        setTimeout(function() {
-          if (form.parentNode) form.parentNode.removeChild(form);
-          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-        }, 1500);
-      };
-
-      iframe.onload = function() {
-        limpiar();
-        resolve({ success: true });
-      };
-
-      form.submit();
-
-      // Temporizador de seguridad por si el evento onload de Google se inhibe
-      setTimeout(function() {
-        limpiar();
-        resolve({ success: true });
-      }, 8000);
-
-    } catch (err) {
-      reject(err);
-    }
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: params.toString()
   });
 }
   </script>
