@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KonekParty Live</title>
+  <style>
+    /* Barra de progreso de subida */
+    .progress-wrapper {
+      width: 100%;
+      background-color: #334155;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 8px;
+      margin-top: 14px;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #4ade80);
+      transition: width 0.3s ease;
+    }
+    .upload-warning {
+      display: none;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: #0b1120; color: #f8fafc; padding: 25px 12px 60px 12px; text-align: center; }
+    
+    .badge { display: inline-block; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+    h1 { font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 6px; }
+    p.subtitle { font-size: 0.95rem; color: #94a3b8; }
+    
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 22px 16px; max-width: 440px; margin: 25px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+    .btn-upload { background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 15px 20px; border-radius: 12px; font-weight: 700; font-size: 1.05rem; cursor: pointer; display: block; width: 100%; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); }
+    .btn-upload:active { transform: scale(0.98); }
+    input[type="file"] { display: none; }
+    
+    #status { margin-top: 15px; font-size: 0.95rem; font-weight: 600; color: #38bdf8; min-height: 24px; }
+    
+    .section-header { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 25px auto 15px auto; padding: 0 5px; }
+    .section-title { font-size: 1.2rem; font-weight: 700; color: #e2e8f0; }
+    .btn-refresh { background: #1e293b; border: 1px solid #475569; color: #cbd5e1; padding: 7px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; max-width: 600px; margin: 0 auto; }
+    .grid-item { position: relative; width: 100%; padding-bottom: 100%; border-radius: 10px; overflow: hidden; background: #1e293b; border: 1px solid #334155; cursor: pointer; }
+    .grid-item img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    
+    #imageModal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.95); flex-direction: column; justify-content: center; align-items: center; padding: 15px; }
+    #modalImg { max-width: 95%; max-height: 82vh; border-radius: 10px; object-fit: contain; }
+    .modal-close { position: absolute; top: 20px; right: 20px; background: rgba(255, 255, 255, 0.2); color: white; border: none; font-size: 1.8rem; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">KonekParty Live</div>
+    <h1>Galería del Evento 🎉</h1>
+    <p class="subtitle">Toca cualquier foto para verla en grande</p>
+  </header>
+
+  <div class="card">
+    <label for="filePicker" id="btnUploadLabel" class="btn-upload">📸 Tomar o Subir Fotos</label>
+    <input type="file" id="filePicker" accept="image/*" multiple onchange="startUpload(this.files)">
+    <div id="status"></div>
+    <div class="progress-wrapper" id="progressWrapper">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <p class="upload-warning" id="uploadWarning">⚠️ Mantén esta pantalla abierta hasta que finalice la carga.</p>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">Galería del Evento</span>
+    <button class="btn-refresh" onclick="loadGallery()">🔄 Actualizar</button>
+  </div>
+
+  <div id="gallery" class="grid">
+    <p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>
+  </div>
+
+  <div id="imageModal" onclick="closeModal()">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <img id="modalImg" src="" alt="Foto ampliada">
+  </div>
+  
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlVebJpGHl5N1axZyA5herAgp5HiqYZHpNayxV043IITadQMeih3_1Njqiy--um7_x/exec";
+    const EVENT_TOKEN = "BODA2026";
+    const WHATSAPP_NUMERO = "525512345678"; 
+    const WHATSAPP_MENSAJE = "Hola KonekParty";
+
+    let marcoVertical = null;
+    let marcoHorizontal = null;
+    let cargaMarcosPromesa = null;
+    let subiendoActualmente = false;
+
+    window.addEventListener('DOMContentLoaded', function() {
+      loadGallery();
+      cargaMarcosPromesa = obtenerMarcosServidor();
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+      if (subiendoActualmente) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    // Carga de marcos de fondo mediante fetch()
+    function obtenerMarcosServidor() {
+      return new Promise(function(resolve, reject) {
+        fetch(SCRIPT_URL + "?action=getFrames&access=" + EVENT_TOKEN)
+          .then(res => res.json())
+          .then(res => {
+            if (!res || !res.success) {
+              reject(new Error(res ? res.error : "No se pudieron obtener las plantillas"));
+              return;
+            }
+
+            let listos = 0;
+            function alCargar() {
+              listos++;
+              if (listos === 2) resolve(true);
+            }
+
+            marcoVertical = new Image();
+            marcoHorizontal = new Image();
+
+            marcoVertical.onload = alCargar;
+            marcoHorizontal.onload = alCargar;
+
+            marcoVertical.onerror = function() { reject(new Error("Error al cargar plantilla vertical")); };
+            marcoHorizontal.onerror = function() { reject(new Error("Error al cargar plantilla horizontal")); };
+
+            marcoVertical.src = res.verticalUrl;
+            marcoHorizontal.src = res.horizontalUrl;
+
+            if (marcoVertical.complete && marcoHorizontal.complete) {
+              resolve(true);
+            }
+          })
+          .catch(err => reject(new Error("Fallo de conexión: " + err.message)));
+      });
+    }
+
+    // Carga de galería mediante fetch()
+    function loadGallery() {
+      const container = document.getElementById('gallery');
+      container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
+      
+      fetch(SCRIPT_URL + "?action=getGallery&access=" + EVENT_TOKEN)
+        .then(res => res.json())
+        .then(res => {
+          if (!res || !res.success) {
+            container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta del servidor') + '</p>';
+            return;
+          }
+          if (!res.list || res.list.length === 0) {
+            container.innerHTML = '<p style="grid-column: 1/-1; color: #94a3b8; font-size: 0.9rem; padding: 20px 0;">Aún no hay fotos. ¡Sé el primero en subir una!</p>';
+            return;
+          }
+          
+          container.innerHTML = res.list.map(function(img) {
+            return '<div class="grid-item" onclick="openModal(\'' + img.id + '\')">' +
+                     '<img src="https://drive.google.com/thumbnail?sz=w400&id=' + img.id + '" loading="lazy" alt="Foto">' +
+                   '</div>';
+          }).join('');
+        })
+        .catch(err => {
+          container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar con Drive: ' + err.message + '</p>';
+        });
+    }
+
+    function openModal(id) {
+      const modal = document.getElementById('imageModal');
+      const img = document.getElementById('modalImg');
+      img.src = "https://drive.google.com/thumbnail?sz=w1200&id=" + id;
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('imageModal').style.display = 'none';
+      document.getElementById('modalImg').src = "";
+    }
+
+    async function startUpload(files) {
+      if (!files || files.length === 0) return;
+
+      const status = document.getElementById('status');
+      const pWrapper = document.getElementById('progressWrapper');
+      const pBar = document.getElementById('progressBar');
+      const warningText = document.getElementById('uploadWarning');
+      const uploadLabel = document.getElementById('btnUploadLabel');
+
+      subiendoActualmente = true;
+      uploadLabel.style.pointerEvents = "none";
+      uploadLabel.style.opacity = "0.6";
+      pWrapper.style.display = "block";
+      warningText.style.display = "block";
+      pBar.style.width = "0%";
+
+      let subidasConExito = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        status.style.color = "#38bdf8";
+        status.innerText = '⏳ Procesando foto ' + (i + 1) + ' de ' + files.length + '...';
+
+        try {
+          const originalBase64 = await readFileAsDataURL(file);
+          const framedBase64 = await processWithFrame(file);
+
+          status.innerText = '☁️ Guardando respaldo ' + (i + 1) + ' de ' + files.length + '...';
+          await sendBackupFile(originalBase64, "RAW_" + file.name);
+
+          status.innerText = '☁️ Guardando postal ' + (i + 1) + ' de ' + files.length + '...';
+          await sendFile(framedBase64, "KP_" + file.name);
+
+          subidasConExito++;
+        } catch (e) {
+          console.error("Fallo puntual en imagen:", e);
+          status.style.color = "#f87171";
+          status.innerText = '⚠️ Foto ' + (i + 1) + ' falló. Continuando con las demás...';
+          await new Promise(function(r) { setTimeout(r, 2000); });
+        }
+
+        const porcentaje = Math.round(((i + 1) / files.length) * 100);
+        pBar.style.width = porcentaje + "%";
+      }
+
+      subiendoActualmente = false;
+      uploadLabel.style.pointerEvents = "auto";
+      uploadLabel.style.opacity = "1";
+      document.getElementById('filePicker').value = "";
+
+      if (subidasConExito === files.length) {
+        status.style.color = "#4ade80";
+        status.innerText = "✅ ¡Listo! " + files.length + " foto(s) guardada(s) con éxito.";
+      } else {
+        status.style.color = "#fbbf24";
+        status.innerText = "Completado: " + subidasConExito + " de " + files.length + " fotos subidas.";
+      }
+
+      setTimeout(function() {
+        pWrapper.style.display = "none";
+        warningText.style.display = "none";
+        status.innerText = "";
+        pBar.style.width = "0%";
+      }, 4000);
+
+      loadGallery();
+    }
+
+    function readFileAsDataURL(file) {
+      return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function(e) { resolve(e.target.result); };
+        reader.onerror = function() { reject(new Error("No se pudo leer el archivo original")); };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function processWithFrame(file) {
+      if (!marcoVertical || !marcoHorizontal || !marcoVertical.complete || !marcoHorizontal.complete) {
+        if (!cargaMarcosPromesa) cargaMarcosPromesa = obtenerMarcosServidor();
+        await cargaMarcosPromesa;
+      }
+
+      return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onerror = function() { reject(new Error("Error leyendo el archivo")); };
+        reader.onload = function(e) {
+          const userImg = new Image();
+          userImg.onerror = function() { reject(new Error("Formato de imagen inválido")); };
+          userImg.onload = function() {
+            
+            const waUrl = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(WHATSAPP_MENSAJE);
+            const qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=2&data=" + encodeURIComponent(waUrl);
+
+            const qrImg = new Image();
+            qrImg.crossOrigin = "Anonymous";
+            qrImg.onload = function() { renderizarTodo(qrImg); };
+            qrImg.onerror = function() { renderizarTodo(null); };
+            qrImg.src = qrApiUrl;
+
+            function renderizarTodo(loadedQr) {
+              try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const isLandscape = userImg.width > userImg.height;
+                const marcoActivo = isLandscape ? marcoHorizontal : marcoVertical;
+
+                const targetW = marcoActivo.naturalWidth || marcoActivo.width || (isLandscape ? 1920 : 1080);
+                const targetH = marcoActivo.naturalHeight || marcoActivo.height || (isLandscape ? 1080 : 1920);
+                canvas.width = targetW;
+                canvas.height = targetH;
+
+                ctx.fillStyle = "#030d42";
+                ctx.fillRect(0, 0, targetW, targetH);
+
+                const slotX = 0;
+                const slotY = targetH * (isLandscape ? 0.12 : 0.16);
+                const slotW = targetW;
+                const slotH = targetH * (isLandscape ? 0.74 : 0.70);
+
+                const scale = Math.max(slotW / userImg.width, slotH / userImg.height);
+                const renderW = userImg.width * scale;
+                const renderH = userImg.height * scale;
+                const offsetX = slotX + (slotW - renderW) / 2;
+                const offsetY = slotY + (slotH - renderH) / 2;
+
+                ctx.drawImage(userImg, offsetX, offsetY, renderW, renderH);
+                ctx.drawImage(marcoActivo, 0, 0, targetW, targetH);
+
+                const tituloEvento = "Nuestra Boda • Sofía & Carlos";
+                const subtituloEvento = "24 de Octubre de 2026";
+                const firmaMarca = "KonekParty Live";
+
+                if (isLandscape) {
+                  const footerY = targetH * 0.915;
+
+                  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+                  ctx.shadowBlur = 6;
+                  ctx.shadowOffsetX = 1;
+                  ctx.shadowOffsetY = 2;
+
+                  ctx.fillStyle = "#ffffff";
+                  const titleSizeH = Math.max(22, Math.round(targetW * 0.020));
+                  ctx.font = 'bold ' + titleSizeH + 'px sans-serif';
+                  ctx.textAlign = "left";
+                  ctx.textBaseline = "middle";
+                  ctx.fillText(tituloEvento, targetW * 0.06, footerY - 14);
+
+                  ctx.fillStyle = "#cbd5e1";
+                  const subSizeH = Math.max(13, Math.round(titleSizeH * 0.58));
+                  ctx.font = '500 ' + subSizeH + 'px sans-serif';
+                  ctx.fillText(subtituloEvento, targetW * 0.06, footerY + 16);
+
+                  ctx.shadowColor = "transparent";
+                  const qrSizeH = 80;
+                  const qrXH = targetW * 0.72;
+                  const qrYH = footerY - (qrSizeH / 2);
+
+                  if (loadedQr) {
+                    const padH = 5;
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(qrXH - padH, qrYH - padH, qrSizeH + (padH * 2), qrSizeH + (padH * 2));
+                    ctx.drawImage(loadedQr, qrXH, qrYH, qrSizeH, qrSizeH);
+
+                    ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
+                    const brandSizeH = Math.max(14, Math.round(targetW * 0.012));
+                    ctx.font = 'bold ' + brandSizeH + 'px sans-serif';
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(firmaMarca, qrXH + qrSizeH + 14, footerY - 10);
+
+                    ctx.fillStyle = "#94a3b8";
+                    const tipSizeH = Math.max(11, Math.round(brandSizeH * 0.75));
+                    ctx.font = '500 ' + tipSizeH + 'px sans-serif';
+                    ctx.fillText("Escanea para informes", qrXH + qrSizeH + 14, footerY + 12);
+                  }
+                } else {
+                  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+                  ctx.shadowBlur = 6;
+                  ctx.shadowOffsetX = 1;
+                  ctx.shadowOffsetY = 2;
+
+                  ctx.fillStyle = "#ffffff";
+                  const fontTitleSize = Math.max(22, Math.round(targetW * 0.043));
+                  ctx.font = 'bold ' + fontTitleSize + 'px sans-serif';
+                  ctx.textAlign = "center";
+                  ctx.textBaseline = "middle";
+                  ctx.fillText(tituloEvento, targetW / 2, targetH * 0.835);
+
+                  ctx.fillStyle = "#cbd5e1";
+                  const fontSubSize = Math.max(13, Math.round(fontTitleSize * 0.54));
+                  ctx.font = '500 ' + fontSubSize + 'px sans-serif';
+                  ctx.fillText(subtituloEvento, targetW / 2, targetH * 0.868);
+
+                  ctx.shadowColor = "transparent";
+                  const baseY = targetH * 0.945;
+                  const qrSize = Math.max(90, Math.round(targetW * 0.10));
+
+                  if (loadedQr) {
+                    const padding = 5;
+                    const qrX = (targetW / 2) - qrSize - 40;
+                    const qrY = baseY - (qrSize / 2);
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(qrX - padding, qrY - padding, qrSize + (padding * 2), qrSize + (padding * 2));
+                    ctx.drawImage(loadedQr, qrX, qrY, qrSize, qrSize);
+
+                    ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
+                    const fontBrandSize = Math.max(14, Math.round(targetW * 0.024));
+                    ctx.font = 'bold ' + fontBrandSize + 'px sans-serif';
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(firmaMarca, qrX + qrSize + 14, baseY - 8);
+
+                    ctx.fillStyle = "#94a3b8";
+                    const fontTipSize = Math.max(11, Math.round(fontBrandSize * 0.72));
+                    ctx.font = '500 ' + fontTipSize + 'px sans-serif';
+                    ctx.fillText("Escanea para informes", qrX + qrSize + 14, baseY + 10);
+                  }
+                }
+
+                resolve(canvas.toDataURL('image/jpeg', 0.90));
+              } catch (canvasErr) {
+                reject(new Error("Error procesando imagen: " + canvasErr.message));
+              }
+            }
+          };
+          userImg.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Subida de imagen final vía fetch POST
+    function sendFile(base64Data, fileName) {
+      return fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "upload",
+          data: base64Data,
+          name: fileName
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res && res.success) return res;
+        throw new Error(res ? res.error : "Fallo en Drive");
+      });
+    }
+
+    // Subida de respaldo original vía fetch POST
+    function sendBackupFile(base64Data, fileName) {
+      return fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "uploadBackup",
+          data: base64Data,
+          name: fileName
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res && res.success) return res;
+        throw new Error(res ? res.error : "Fallo en respaldo de Drive");
+      });
+    }
+  </script>
+</body>
+</html>
