@@ -88,9 +88,6 @@
   </div>
   
   <script>
-    // -------------------------------------------------------------
-    // CONFIGURACIÓN PRINCIPAL
-    // -------------------------------------------------------------
     var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlVebJpGHl5N1axZyA5herAgp5HiqYZHpNayxV043IITadQMeih3_1Njqiy--um7_x/exec";
     var EVENT_TOKEN = "BODA2026";
     var WHATSAPP_NUMERO = "525512345678"; 
@@ -101,9 +98,6 @@
     var cargaMarcosPromesa = null;
     var subiendoActualmente = false;
 
-    // -------------------------------------------------------------
-    // FUNCIONES DEL MODAL
-    // -------------------------------------------------------------
     function openModal(id) {
       var modal = document.getElementById('imageModal');
       var img = document.getElementById('modalImg');
@@ -120,9 +114,6 @@
       if (img) img.src = "";
     }
 
-    // -------------------------------------------------------------
-    // INICIALIZACIÓN
-    // -------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', function() {
       var filePicker = document.getElementById('filePicker');
       if (filePicker) {
@@ -160,36 +151,37 @@
     });
 
     // -------------------------------------------------------------
-    // CONSULTA JSONP ROBUSTA CON AISLAMIENTO DE ORIGEN
+    // FUNCIÓN JSONP CON AISLAMIENTO DE ORIGEN
     // -------------------------------------------------------------
-function fetchJSONP(params) {
-  return new Promise(function(resolve, reject) {
-    var callbackName = 'cb_' + Math.round(1000000 * Math.random());
-    var script = document.createElement('script');
+    function fetchJSONP(params) {
+      return new Promise(function(resolve, reject) {
+        var callbackName = 'cb_' + Math.round(1000000 * Math.random());
+        var script = document.createElement('script');
+        
+        // Bloquea el envío de cookies de cuentas corporativas
+        script.crossOrigin = "anonymous";
+        script.referrerPolicy = "no-referrer";
 
-    // IMPORTANTE: NO incluir script.crossOrigin
-    script.referrerPolicy = "no-referrer";
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          resolve(data);
+        };
 
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    };
+        script.onerror = function() {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error("No se pudo conectar con el servidor"));
+        };
 
-    script.onerror = function() {
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      reject(new Error("No se pudo conectar con el servidor"));
-    };
+        var cleanUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
+        var sep = cleanUrl.indexOf('?') >= 0 ? '&' : '?';
+        var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
 
-    var cleanUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
-    var sep = cleanUrl.indexOf('?') >= 0 ? '&' : '?';
-    var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
-
-    script.src = cleanUrl + sep + cleanParams + '&callback=' + callbackName + '&_nocache=' + Date.now();
-    document.head.appendChild(script);
-  });
-}
+        script.src = cleanUrl + sep + cleanParams + '&callback=' + callbackName + '&_nocache=' + Date.now();
+        document.head.appendChild(script);
+      });
+    }
 
     function obtenerMarcosServidor() {
       return new Promise(function(resolve) {
@@ -258,7 +250,7 @@ function fetchJSONP(params) {
     }
 
     // -------------------------------------------------------------
-    // PROCESAMIENTO Y SUBIDA DE FOTOS
+    // PROCESAMIENTO Y SUBIDA
     // -------------------------------------------------------------
     async function startUpload(files) {
       if (!files || files.length === 0) return;
@@ -332,7 +324,7 @@ function fetchJSONP(params) {
       return new Promise(function(resolve, reject) {
         var reader = new FileReader();
         reader.onload = function(e) { resolve(e.target.result); };
-        reader.onerror = function() { reject(new Error("No se pudo leer archivo original")); };
+        reader.onerror = function() { reject(new Error("No se pudo leer el archivo original")); };
         reader.readAsDataURL(file);
       });
     }
@@ -345,7 +337,7 @@ function fetchJSONP(params) {
 
       return new Promise(function(resolve, reject) {
         var reader = new FileReader();
-        reader.onerror = function() { reject(new Error("Error leyendo archivo")); };
+        reader.onerror = function() { reject(new Error("Error leyendo el archivo")); };
         reader.onload = function(e) {
           var userImg = new Image();
           userImg.onerror = function() { reject(new Error("Formato de imagen inválido")); };
