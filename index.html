@@ -390,4 +390,72 @@
                   ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
                   ctx.shadowBlur = 6;
                   ctx.shadowOffsetX = 1;
-                  ctx.shadowOffsetY =
+                  ctx.shadowOffsetY = 2;
+
+                  ctx.fillStyle = "#ffffff";
+                  const fontTitleSize = Math.max(22, Math.round(targetW * 0.043));
+                  ctx.font = 'bold ' + fontTitleSize + 'px sans-serif';
+                  ctx.textAlign = "center";
+                  ctx.textBaseline = "middle";
+                  ctx.fillText(tituloEvento, targetW / 2, targetH * 0.835);
+
+                  ctx.fillStyle = "#cbd5e1";
+                  const fontSubSize = Math.max(13, Math.round(fontTitleSize * 0.54));
+                  ctx.font = '500 ' + fontSubSize + 'px sans-serif';
+                  ctx.fillText(subtituloEvento, targetW / 2, targetH * 0.868);
+
+                  ctx.shadowColor = "transparent";
+                  const baseY = targetH * 0.945;
+                  const qrSize = Math.max(90, Math.round(targetW * 0.10));
+
+                  if (loadedQr) {
+                    const padding = 5;
+                    const qrX = (targetW / 2) - qrSize - 40;
+                    const qrY = baseY - (qrSize / 2);
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(qrX - padding, qrY - padding, qrSize + (padding * 2), qrSize + (padding * 2));
+                    ctx.drawImage(loadedQr, qrX, qrY, qrSize, qrSize);
+
+                    ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
+                    const fontBrandSize = Math.max(14, Math.round(targetW * 0.024));
+                    ctx.font = 'bold ' + fontBrandSize + 'px sans-serif';
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(firmaMarca, qrX + qrSize + 14, baseY - 8);
+
+                    ctx.fillStyle = "#94a3b8";
+                    const fontTipSize = Math.max(11, Math.round(fontBrandSize * 0.72));
+                    ctx.font = '500 ' + fontTipSize + 'px sans-serif';
+                    ctx.fillText("Escanea para informes", qrX + qrSize + 14, baseY + 10);
+                  }
+                }
+
+                resolve(canvas.toDataURL('image/jpeg', 0.90));
+              } catch (canvasErr) {
+                reject(new Error("Error procesando imagen: " + canvasErr.message));
+              }
+            }
+          };
+          userImg.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 3. ENVÍO SEGURO SIN BLOQUEOS CORS NI REDIRECCIONES
+    function uploadToAppsScript(action, base64Data, fileName) {
+      return fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: action,
+          data: base64Data,
+          name: fileName
+        })
+      });
+    }
+  </script>
+</body>
+</html>
