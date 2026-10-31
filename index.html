@@ -63,9 +63,21 @@
     <p class="subtitle">Toca cualquier foto para verla en grande</p>
   </header>
 
-  <div class="card">
-    <label for="filePicker" id="btnUploadLabel" class="btn-upload">📸 Tomar o Subir Fotos</label>
-    <input type="file" id="filePicker" accept="image/*" multiple>
+ <div class="card">
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <!-- Botón 1: Cámara Directa -->
+      <label for="cameraPicker" class="btn-upload" style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #0284c7, #0369a1);">
+        📸 Tomar Foto
+      </label>
+      <input type="file" id="cameraPicker" accept="image/*" capture="environment">
+
+      <!-- Botón 2: Galería / Subir Archivos -->
+      <label for="filePicker" class="btn-upload" style="flex: 1; min-width: 140px; background: #334155; border: 1px solid #475569;">
+        🖼️ Subir Fotos
+      </label>
+      <input type="file" id="filePicker" accept="image/*" multiple>
+    </div>
+
     <div id="status"></div>
     <div class="progress-wrapper" id="progressWrapper">
       <div class="progress-bar" id="progressBar"></div>
@@ -130,7 +142,12 @@
           startUpload(this.files);
         });
       }
-
+      var cameraPicker = document.getElementById('cameraPicker');
+      if (cameraPicker) {
+        cameraPicker.addEventListener('change', function() {
+          startUpload(this.files);
+        });
+      }
       var btnRefresh = document.getElementById('btnRefresh');
       if (btnRefresh) {
         btnRefresh.addEventListener('click', loadGallery);
