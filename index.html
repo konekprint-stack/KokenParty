@@ -91,7 +91,7 @@
     // -------------------------------------------------------------
     // CONFIGURACIÓN PRINCIPAL
     // -------------------------------------------------------------
-    var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPqN_zHBGs_u12W885aAhAZwn8SqWkOIz0OknrUctQHwJX1oS450iz8qmYtobrx9iD/exec";
+    var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLu1SoUknlOqoCPXkvTKGEAQdhRjJWPzlwXUhlLW9_KJQT9_9Oa-Fq6mb58F0uIFO7/exec";
     var EVENT_TOKEN = "BODA2026";
     var WHATSAPP_NUMERO = "525512345678"; 
     var WHATSAPP_MENSAJE = "Hola KonekParty";
@@ -169,10 +169,9 @@ function fetchJSONP(params) {
     var callbackName = 'cb_' + Math.round(1000000 * Math.random());
     var script = document.createElement('script');
     
-    // Normalizar la URL base asegurando que termine sin slash extra
-    var baseUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
-    var sep = baseUrl.indexOf('?') >= 0 ? '&' : '?';
-    var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
+    // Evita que el navegador arrastre cookies corporativas hacia Google
+    script.crossOrigin = "anonymous";
+    script.referrerPolicy = "no-referrer";
 
     window[callbackName] = function(data) {
       delete window[callbackName];
@@ -186,7 +185,11 @@ function fetchJSONP(params) {
       reject(new Error("No se pudo conectar con el servidor"));
     };
 
-    script.src = baseUrl + sep + cleanParams + '&callback=' + callbackName + '&_t=' + new Date().getTime();
+    var cleanUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
+    var sep = cleanUrl.indexOf('?') >= 0 ? '&' : '?';
+    var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
+
+    script.src = cleanUrl + sep + cleanParams + '&callback=' + callbackName + '&_nocache=' + Date.now();
     document.head.appendChild(script);
   });
 }
