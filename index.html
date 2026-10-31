@@ -467,18 +467,22 @@
       });
     }
 
-    function uploadToAppsScript(action, base64Data, fileName) {
-      return fetch(SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: action,
-          data: base64Data,
-          name: fileName
-        })
-      });
-    }
+   function uploadToAppsScript(action, base64Data, fileName) {
+  var formData = new URLSearchParams();
+  formData.append("action", action);
+  formData.append("data", base64Data);
+  formData.append("name", fileName);
+  formData.append("access", EVENT_TOKEN);
+
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: formData.toString()
+  });
+}
   </script>
 </body>
 </html>
