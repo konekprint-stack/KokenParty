@@ -189,7 +189,7 @@ function fetchJSONP(params) {
     document.head.appendChild(script);
   });
 }
-
+    
 function obtenerMarcosServidor() {
   return new Promise(function(resolve) {
     fetchJSONP("action=getFrames&access=" + EVENT_TOKEN)
