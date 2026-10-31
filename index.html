@@ -169,6 +169,10 @@ function fetchJSONP(params) {
     var script = document.createElement('script');
     var separator = SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?';
 
+    // Omitir cookies de sesión, cuentas de trabajo y credenciales de Google
+    script.crossOrigin = "anonymous";
+    script.referrerPolicy = "no-referrer";
+
     window[callbackName] = function(data) {
       delete window[callbackName];
       if (script.parentNode) script.parentNode.removeChild(script);
