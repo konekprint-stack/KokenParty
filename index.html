@@ -218,12 +218,11 @@ function obtenerMarcosServidor() {
         }
       })
       .catch(function(err) {
-        console.warn("Fallo secundario en plantillas:", err);
-        resolve(true);
+        console.warn("Aviso en plantillas:", err);
+        resolve(true); // Continúa sin bloquear la app
       });
   });
 }
-
 function loadGallery() {
   var container = document.getElementById('gallery');
   container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
