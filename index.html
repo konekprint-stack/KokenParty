@@ -167,7 +167,6 @@ function fetchJSONP(params) {
   return new Promise(function(resolve, reject) {
     var callbackName = 'cb_' + Math.round(1000000 * Math.random());
     var script = document.createElement('script');
-    var separator = SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?';
 
     window[callbackName] = function(data) {
       delete window[callbackName];
@@ -181,7 +180,12 @@ function fetchJSONP(params) {
       reject(new Error("No se pudo conectar con el servidor"));
     };
 
-    script.src = SCRIPT_URL + separator + params + '&callback=' + callbackName;
+    // Asegurar unión limpia de parámetros
+    var baseUrl = SCRIPT_URL.trim();
+    var joinChar = baseUrl.indexOf('?') >= 0 ? '&' : '?';
+    var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
+
+    script.src = baseUrl + joinChar + cleanParams + '&callback=' + callbackName;
     document.head.appendChild(script);
   });
 }
