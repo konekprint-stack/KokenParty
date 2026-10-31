@@ -162,25 +162,36 @@
     // -------------------------------------------------------------
     // CONSULTA NEUTRAL A APPS SCRIPT (Sin cookies de sesión / trabajo)
     // -------------------------------------------------------------
- // Consulta universal mediante proxy anónimo (elimina el bloqueo de cookies corporativas)
-function fetchUniversal(params) {
-  var targetUrl = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params;
-  // Proxy público confiable para bypass de CORS y cookies de Workspace
-  var proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(targetUrl);
+ // Lectura directa JSONP sin proxies externos (inmune a CORS y a bloqueos corporativos)
+function fetchJSONP(params) {
+  return new Promise(function(resolve, reject) {
+    var callbackName = 'cb_' + Math.round(1000000 * Math.random());
+    var script = document.createElement('script');
+    var separator = SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?';
 
-  return fetch(proxyUrl)
-    .then(function(res) {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    });
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+
+    script.onerror = function() {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      reject(new Error("No se pudo conectar con el servidor"));
+    };
+
+    script.src = SCRIPT_URL + separator + params + '&callback=' + callbackName;
+    document.head.appendChild(script);
+  });
 }
-    
+
 function obtenerMarcosServidor() {
   return new Promise(function(resolve) {
-    fetchUniversal("action=getFrames&access=" + EVENT_TOKEN)
+    fetchJSONP("action=getFrames&access=" + EVENT_TOKEN)
       .then(function(res) {
         if (!res || !res.success) {
-          console.warn("Aviso plantillas:", res);
+          console.warn("Aviso marcos:", res);
           resolve(true);
           return;
         }
@@ -207,7 +218,7 @@ function obtenerMarcosServidor() {
         }
       })
       .catch(function(err) {
-        console.warn("Fallo secundario en marcos:", err);
+        console.warn("Fallo secundario en plantillas:", err);
         resolve(true);
       });
   });
@@ -217,7 +228,7 @@ function loadGallery() {
   var container = document.getElementById('gallery');
   container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
 
-  fetchUniversal("action=getGallery&access=" + EVENT_TOKEN)
+  fetchJSONP("action=getGallery&access=" + EVENT_TOKEN)
     .then(function(res) {
       if (!res || !res.success) {
         container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta') + '</p>';
