@@ -86,8 +86,7 @@
     <button class="modal-close" onclick="closeModal()">✕</button>
     <img id="modalImg" src="" alt="Foto ampliada">
   </div>
-  
-  <script>
+ <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlVebJpGHl5N1axZyA5herAgp5HiqYZHpNayxV043IITadQMeih3_1Njqiy--um7_x/exec";
     const EVENT_TOKEN = "BODA2026";
     const WHATSAPP_NUMERO = "525512345678"; 
@@ -98,135 +97,107 @@
     let cargaMarcosPromesa = null;
     let subiendoActualmente = false;
 
-   // Función genérica para consultar datos a Apps Script sin bloqueos CORS
-function fetchJSONP(url) {
-  return new Promise(function(resolve, reject) {
-    const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
-    const script = document.createElement('script');
-
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-      document.body.removeChild(script);
-      resolve(data);
-    };
-
-    script.onerror = function() {
-      delete window[callbackName];
-      document.body.removeChild(script);
-      reject(new Error("No se pudo conectar con el servidor"));
-    };
-
-    const separator = url.indexOf('?') >= 0 ? '&' : '?';
-    script.src = url + separator + 'callback=' + callbackName;
-    document.body.appendChild(script);
-  });
-}
-
-// Carga de marcos de fondo
-function obtenerMarcosServidor() {
-  return new Promise(function(resolve, reject) {
-    fetchJSONP(SCRIPT_URL + "?action=getFrames&access=" + EVENT_TOKEN)
-      .then(function(res) {
-        if (!res || !res.success) {
-          reject(new Error(res ? res.error : "No se pudieron obtener las plantillas"));
-          return;
-        }
-
-        let listos = 0;
-        function alCargar() {
-          listos++;
-          if (listos === 2) resolve(true);
-        }
-
-        marcoVertical = new Image();
-        marcoHorizontal = new Image();
-
-        marcoVertical.onload = alCargar;
-        marcoHorizontal.onload = alCargar;
-
-        marcoVertical.onerror = function() { reject(new Error("Error al cargar plantilla vertical")); };
-        marcoHorizontal.onerror = function() { reject(new Error("Error al cargar plantilla horizontal")); };
-
-        marcoVertical.src = res.verticalUrl;
-        marcoHorizontal.src = res.horizontalUrl;
-
-        if (marcoVertical.complete && marcoHorizontal.complete) {
-          resolve(true);
-        }
-      })
-      .catch(function(err) {
-        reject(new Error("Fallo de conexión en plantillas: " + err.message));
-      });
-  });
-}
-
-// Carga de la galería de fotos
-function loadGallery() {
-  const container = document.getElementById('gallery');
-  container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
-
-  fetchJSONP(SCRIPT_URL + "?action=getGallery&access=" + EVENT_TOKEN)
-    .then(function(res) {
-      if (!res || !res.success) {
-        container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta del servidor') + '</p>';
-        return;
-      }
-      if (!res.list || res.list.length === 0) {
-        container.innerHTML = '<p style="grid-column: 1/-1; color: #94a3b8; font-size: 0.9rem; padding: 20px 0;">Aún no hay fotos. ¡Sé el primero en subir una!</p>';
-        return;
-      }
-
-      container.innerHTML = res.list.map(function(img) {
-        return '<div class="grid-item" onclick="openModal(\'' + img.id + '\')">' +
-                 '<img src="https://drive.google.com/thumbnail?sz=w400&id=' + img.id + '" loading="lazy" alt="Foto">' +
-               '</div>';
-      }).join('');
-    })
-    .catch(function(err) {
-      container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar con Drive: ' + err.message + '</p>';
+    window.addEventListener('DOMContentLoaded', function() {
+      loadGallery();
+      cargaMarcosPromesa = obtenerMarcosServidor();
     });
-}
-    // Carga de galería mediante fetch()
- function loadGallery() {
-  const container = document.getElementById('gallery');
-  container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
-  
-  const targetUrl = SCRIPT_URL + "?action=getGallery&access=" + EVENT_TOKEN;
 
-  fetch(targetUrl, {
-    method: "GET",
-    mode: "cors",
-    redirect: "follow",
-    headers: {
-      "Accept": "application/json"
+    window.addEventListener('beforeunload', function (e) {
+      if (subiendoActualmente) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    // 1. FUNCIÓN GENÉRICA JSONP (Sin bloqueos de CORS)
+    function fetchJSONP(url) {
+      return new Promise(function(resolve, reject) {
+        const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+        const script = document.createElement('script');
+
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          resolve(data);
+        };
+
+        script.onerror = function() {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error("No se pudo conectar con el servidor"));
+        };
+
+        const separator = url.indexOf('?') >= 0 ? '&' : '?';
+        script.src = url + separator + 'callback=' + callbackName;
+        document.body.appendChild(script);
+      });
     }
-  })
-  .then(function(res) {
-    if (!res.ok) {
-      throw new Error("HTTP " + res.status);
+
+    // 2. OBTENER MARCOS VÍA JSONP
+    function obtenerMarcosServidor() {
+      return new Promise(function(resolve, reject) {
+        fetchJSONP(SCRIPT_URL + "?action=getFrames&access=" + EVENT_TOKEN)
+          .then(function(res) {
+            if (!res || !res.success) {
+              reject(new Error(res ? res.error : "No se pudieron obtener las plantillas"));
+              return;
+            }
+
+            let listos = 0;
+            function alCargar() {
+              listos++;
+              if (listos === 2) resolve(true);
+            }
+
+            marcoVertical = new Image();
+            marcoHorizontal = new Image();
+
+            marcoVertical.onload = alCargar;
+            marcoHorizontal.onload = alCargar;
+
+            marcoVertical.onerror = function() { reject(new Error("Error al cargar plantilla vertical")); };
+            marcoHorizontal.onerror = function() { reject(new Error("Error al cargar plantilla horizontal")); };
+
+            marcoVertical.src = res.verticalUrl;
+            marcoHorizontal.src = res.horizontalUrl;
+
+            if (marcoVertical.complete && marcoHorizontal.complete) {
+              resolve(true);
+            }
+          })
+          .catch(function(err) {
+            reject(new Error("Fallo de conexión en plantillas: " + err.message));
+          });
+      });
     }
-    return res.json();
-  })
-  .then(function(res) {
-    if (!res || !res.success) {
-      container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta del servidor') + '</p>';
-      return;
+
+    // 3. CARGAR GALERÍA VÍA JSONP
+    function loadGallery() {
+      const container = document.getElementById('gallery');
+      container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
+
+      fetchJSONP(SCRIPT_URL + "?action=getGallery&access=" + EVENT_TOKEN)
+        .then(function(res) {
+          if (!res || !res.success) {
+            container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta del servidor') + '</p>';
+            return;
+          }
+          if (!res.list || res.list.length === 0) {
+            container.innerHTML = '<p style="grid-column: 1/-1; color: #94a3b8; font-size: 0.9rem; padding: 20px 0;">Aún no hay fotos. ¡Sé el primero en subir una!</p>';
+            return;
+          }
+
+          container.innerHTML = res.list.map(function(img) {
+            return '<div class="grid-item" onclick="openModal(\'' + img.id + '\')">' +
+                     '<img src="https://drive.google.com/thumbnail?sz=w400&id=' + img.id + '" loading="lazy" alt="Foto">' +
+                   '</div>';
+          }).join('');
+        })
+        .catch(function(err) {
+          container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar con Drive: ' + err.message + '</p>';
+        });
     }
-    if (!res.list || res.list.length === 0) {
-      container.innerHTML = '<p style="grid-column: 1/-1; color: #94a3b8; font-size: 0.9rem; padding: 20px 0;">Aún no hay fotos. ¡Sé el primero en subir una!</p>';
-      return;
-    }
-    
-    container.innerHTML = res.list.map(function(img) {
-      return '<div class="grid-item" onclick="openModal(\'' + img.id + '\')">' +
-               '<img src="https://drive.google.com/thumbnail?sz=w400&id=' + img.id + '" loading="lazy" alt="Foto">' +
-             '</div>';
-    }).join('');
-  })
-  .catch(function(err) {
-    container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar con Drive: ' + err.message + '</p>';
-  });
-}
+
     function openModal(id) {
       const modal = document.getElementById('imageModal');
       const img = document.getElementById('modalImg');
@@ -239,6 +210,7 @@ function loadGallery() {
       document.getElementById('modalImg').src = "";
     }
 
+    // 4. FLUJO DE PROCESAMIENTO Y SUBIDA
     async function startUpload(files) {
       if (!files || files.length === 0) return;
 
@@ -473,45 +445,40 @@ function loadGallery() {
       });
     }
 
-   // Subida de imagen final
-function sendFile(base64Data, fileName) {
-  return fetch(SCRIPT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({
-      action: "upload",
-      data: base64Data,
-      name: fileName
-    })
-  })
-  .then(res => res.json())
-  .then(res => {
-    if (res && res.success) return res;
-    throw new Error(res ? res.error : "Fallo en Drive");
-  });
-}
+    // 5. ENVÍO DE ARCHIVOS
+    function sendFile(base64Data, fileName) {
+      return fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "upload",
+          data: base64Data,
+          name: fileName
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res && res.success) return res;
+        throw new Error(res ? res.error : "Fallo en Drive");
+      });
+    }
 
-// Subida de respaldo original
-function sendBackupFile(base64Data, fileName) {
-  return fetch(SCRIPT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({
-      action: "uploadBackup",
-      data: base64Data,
-      name: fileName
-    })
-  })
-  .then(res => res.json())
-  .then(res => {
-    if (res && res.success) return res;
-    throw new Error(res ? res.error : "Fallo en respaldo de Drive");
-  });
-}
-  </script>
-</body>
+    function sendBackupFile(base64Data, fileName) {
+      return fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "uploadBackup",
+          data: base64Data,
+          name: fileName
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res && res.success) return res;
+        throw new Error(res ? res.error : "Fallo en respaldo de Drive");
+      });
+    }
+  </script> 
+ </body>
 </html>
