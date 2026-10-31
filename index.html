@@ -98,55 +98,94 @@
     let cargaMarcosPromesa = null;
     let subiendoActualmente = false;
 
-    window.addEventListener('DOMContentLoaded', function() {
-      loadGallery();
-      cargaMarcosPromesa = obtenerMarcosServidor();
-    });
+   // Función genérica para consultar datos a Apps Script sin bloqueos CORS
+function fetchJSONP(url) {
+  return new Promise(function(resolve, reject) {
+    const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+    const script = document.createElement('script');
 
-    window.addEventListener('beforeunload', function (e) {
-      if (subiendoActualmente) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    });
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
 
-    // Carga de marcos de fondo mediante fetch()
-    function obtenerMarcosServidor() {
-      return new Promise(function(resolve, reject) {
-        fetch(SCRIPT_URL + "?action=getFrames&access=" + EVENT_TOKEN)
-          .then(res => res.json())
-          .then(res => {
-            if (!res || !res.success) {
-              reject(new Error(res ? res.error : "No se pudieron obtener las plantillas"));
-              return;
-            }
+    script.onerror = function() {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error("No se pudo conectar con el servidor"));
+    };
 
-            let listos = 0;
-            function alCargar() {
-              listos++;
-              if (listos === 2) resolve(true);
-            }
+    const separator = url.indexOf('?') >= 0 ? '&' : '?';
+    script.src = url + separator + 'callback=' + callbackName;
+    document.body.appendChild(script);
+  });
+}
 
-            marcoVertical = new Image();
-            marcoHorizontal = new Image();
+// Carga de marcos de fondo
+function obtenerMarcosServidor() {
+  return new Promise(function(resolve, reject) {
+    fetchJSONP(SCRIPT_URL + "?action=getFrames&access=" + EVENT_TOKEN)
+      .then(function(res) {
+        if (!res || !res.success) {
+          reject(new Error(res ? res.error : "No se pudieron obtener las plantillas"));
+          return;
+        }
 
-            marcoVertical.onload = alCargar;
-            marcoHorizontal.onload = alCargar;
+        let listos = 0;
+        function alCargar() {
+          listos++;
+          if (listos === 2) resolve(true);
+        }
 
-            marcoVertical.onerror = function() { reject(new Error("Error al cargar plantilla vertical")); };
-            marcoHorizontal.onerror = function() { reject(new Error("Error al cargar plantilla horizontal")); };
+        marcoVertical = new Image();
+        marcoHorizontal = new Image();
 
-            marcoVertical.src = res.verticalUrl;
-            marcoHorizontal.src = res.horizontalUrl;
+        marcoVertical.onload = alCargar;
+        marcoHorizontal.onload = alCargar;
 
-            if (marcoVertical.complete && marcoHorizontal.complete) {
-              resolve(true);
-            }
-          })
-          .catch(err => reject(new Error("Fallo de conexión: " + err.message)));
+        marcoVertical.onerror = function() { reject(new Error("Error al cargar plantilla vertical")); };
+        marcoHorizontal.onerror = function() { reject(new Error("Error al cargar plantilla horizontal")); };
+
+        marcoVertical.src = res.verticalUrl;
+        marcoHorizontal.src = res.horizontalUrl;
+
+        if (marcoVertical.complete && marcoHorizontal.complete) {
+          resolve(true);
+        }
+      })
+      .catch(function(err) {
+        reject(new Error("Fallo de conexión en plantillas: " + err.message));
       });
-    }
+  });
+}
 
+// Carga de la galería de fotos
+function loadGallery() {
+  const container = document.getElementById('gallery');
+  container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
+
+  fetchJSONP(SCRIPT_URL + "?action=getGallery&access=" + EVENT_TOKEN)
+    .then(function(res) {
+      if (!res || !res.success) {
+        container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta del servidor') + '</p>';
+        return;
+      }
+      if (!res.list || res.list.length === 0) {
+        container.innerHTML = '<p style="grid-column: 1/-1; color: #94a3b8; font-size: 0.9rem; padding: 20px 0;">Aún no hay fotos. ¡Sé el primero en subir una!</p>';
+        return;
+      }
+
+      container.innerHTML = res.list.map(function(img) {
+        return '<div class="grid-item" onclick="openModal(\'' + img.id + '\')">' +
+                 '<img src="https://drive.google.com/thumbnail?sz=w400&id=' + img.id + '" loading="lazy" alt="Foto">' +
+               '</div>';
+      }).join('');
+    })
+    .catch(function(err) {
+      container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar con Drive: ' + err.message + '</p>';
+    });
+}
     // Carga de galería mediante fetch()
  function loadGallery() {
   const container = document.getElementById('gallery');
