@@ -162,84 +162,95 @@
     // -------------------------------------------------------------
     // CONSULTA NEUTRAL A APPS SCRIPT (Sin cookies de sesión / trabajo)
     // -------------------------------------------------------------
-    function fetchAPI(params) {
-      var url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params;
-      return fetch(url, {
-        method: "GET",
-        mode: "cors",
-        credentials: "omit"
-      }).then(function(res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
+  // Carga mediante JSONP: inmune a CORS, a redirecciones 302 y a cuentas corporativas
+function fetchJSONP(params) {
+  return new Promise(function(resolve, reject) {
+    var callbackName = 'cb_' + Math.round(1000000 * Math.random());
+    var script = document.createElement('script');
+    var separator = SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?';
+
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+
+    script.onerror = function() {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      reject(new Error("No se pudo conectar con el servidor"));
+    };
+
+    script.src = SCRIPT_URL + separator + params + '&callback=' + callbackName;
+    document.head.appendChild(script);
+  });
+}
+
+function obtenerMarcosServidor() {
+  return new Promise(function(resolve) {
+    fetchJSONP("action=getFrames&access=" + EVENT_TOKEN)
+      .then(function(res) {
+        if (!res || !res.success) {
+          console.warn("Aviso marcos:", res);
+          resolve(true);
+          return;
+        }
+
+        var listos = 0;
+        function alCargar() {
+          listos++;
+          if (listos === 2) resolve(true);
+        }
+
+        marcoVertical = new Image();
+        marcoHorizontal = new Image();
+
+        marcoVertical.onload = alCargar;
+        marcoHorizontal.onload = alCargar;
+        marcoVertical.onerror = function() { resolve(true); };
+        marcoHorizontal.onerror = function() { resolve(true); };
+
+        marcoVertical.src = res.verticalUrl || res.marcoVertical;
+        marcoHorizontal.src = res.horizontalUrl || res.marcoHorizontal;
+
+        if (marcoVertical.complete && marcoHorizontal.complete) {
+          resolve(true);
+        }
+      })
+      .catch(function(err) {
+        console.warn("Fallo plantillas:", err);
+        resolve(true);
       });
-    }
+  });
+}
 
-    function obtenerMarcosServidor() {
-      return new Promise(function(resolve) {
-        fetchAPI("action=getFrames&access=" + EVENT_TOKEN)
-          .then(function(res) {
-            if (!res || !res.success) {
-              console.warn("Aviso plantillas:", res);
-              resolve(true);
-              return;
-            }
+function loadGallery() {
+  var container = document.getElementById('gallery');
+  container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
 
-            var listos = 0;
-            function alCargar() {
-              listos++;
-              if (listos === 2) resolve(true);
-            }
+  fetchJSONP("action=getGallery&access=" + EVENT_TOKEN)
+    .then(function(res) {
+      if (!res || !res.success) {
+        container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta') + '</p>';
+        return;
+      }
 
-            marcoVertical = new Image();
-            marcoHorizontal = new Image();
+      var fotos = res.list || res.images || res.fotos || [];
+      if (fotos.length === 0) {
+        container.innerHTML = '<p style="grid-column: 1/-1; color: #94a3b8; font-size: 0.9rem; padding: 20px 0;">Aún no hay fotos. ¡Sé el primero en subir una!</p>';
+        return;
+      }
 
-            marcoVertical.onload = alCargar;
-            marcoHorizontal.onload = alCargar;
-            marcoVertical.onerror = function() { resolve(true); };
-            marcoHorizontal.onerror = function() { resolve(true); };
-
-            marcoVertical.src = res.verticalUrl || res.marcoVertical;
-            marcoHorizontal.src = res.horizontalUrl || res.marcoHorizontal;
-
-            if (marcoVertical.complete && marcoHorizontal.complete) {
-              resolve(true);
-            }
-          })
-          .catch(function(err) {
-            console.warn("Fallo marcos:", err);
-            resolve(true);
-          });
-      });
-    }
-
-    function loadGallery() {
-      var container = document.getElementById('gallery');
-      container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
-
-      fetchAPI("action=getGallery&access=" + EVENT_TOKEN)
-        .then(function(res) {
-          if (!res || !res.success) {
-            container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">⚠️ ' + (res ? res.error : 'Sin respuesta') + '</p>';
-            return;
-          }
-
-          var fotos = res.list || res.images || res.fotos || [];
-          if (fotos.length === 0) {
-            container.innerHTML = '<p style="grid-column: 1/-1; color: #94a3b8; font-size: 0.9rem; padding: 20px 0;">Aún no hay fotos. ¡Sé el primero en subir una!</p>';
-            return;
-          }
-
-          container.innerHTML = fotos.map(function(img) {
-            return '<div class="grid-item" onclick="openModal(\'' + img.id + '\')">' +
-                     '<img src="https://drive.google.com/thumbnail?sz=w400&id=' + img.id + '" loading="lazy" alt="Foto">' +
-                   '</div>';
-          }).join('');
-        })
-        .catch(function(err) {
-          container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar: ' + err.message + '</p>';
-        });
-    }
-
+      container.innerHTML = fotos.map(function(img) {
+        return '<div class="grid-item" onclick="openModal(\'' + img.id + '\')">' +
+                 '<img src="https://drive.google.com/thumbnail?sz=w400&id=' + img.id + '" loading="lazy" alt="Foto">' +
+               '</div>';
+      }).join('');
+    })
+    .catch(function(err) {
+      container.innerHTML = '<p style="grid-column: 1/-1; color: #f87171; font-size: 0.85rem; padding: 20px 0;">❌ Error al conectar: ' + err.message + '</p>';
+    });
+}
     // -------------------------------------------------------------
     // PROCESAMIENTO Y SUBIDA DE FOTOS
     // -------------------------------------------------------------
