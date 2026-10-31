@@ -446,39 +446,50 @@
     }
 
     // 5. ENVÍO DE ARCHIVOS
-    function sendFile(base64Data, fileName) {
-      return fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "upload",
-          data: base64Data,
-          name: fileName
-        })
-      })
-      .then(res => res.json())
-      .then(res => {
-        if (res && res.success) return res;
-        throw new Error(res ? res.error : "Fallo en Drive");
-      });
-    }
+ function sendFile(base64Data, fileName) {
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "cors",
+    redirect: "follow",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify({
+      action: "upload",
+      data: base64Data,
+      name: fileName
+    })
+  })
+  .then(function(res) {
+    return res.json();
+  })
+  .then(function(res) {
+    if (res && res.success) return res;
+    throw new Error(res ? res.error : "Error en el servidor de Drive");
+  });
+}
 
-    function sendBackupFile(base64Data, fileName) {
-      return fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "uploadBackup",
-          data: base64Data,
-          name: fileName
-        })
-      })
-      .then(res => res.json())
-      .then(res => {
-        if (res && res.success) return res;
-        throw new Error(res ? res.error : "Fallo en respaldo de Drive");
-      });
-    }
-  </script> 
+function sendBackupFile(base64Data, fileName) {
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "cors",
+    redirect: "follow",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify({
+      action: "uploadBackup",
+      data: base64Data,
+      name: fileName
+    })
+  })
+  .then(function(res) {
+    return res.json();
+  })
+  .then(function(res) {
+    if (res && res.success) return res;
+    throw new Error(res ? res.error : "Error en respaldo de Drive");
+  });
+}
  </body>
 </html>
