@@ -162,35 +162,34 @@
     // -------------------------------------------------------------
     // CONSULTA JSONP ROBUSTA CON AISLAMIENTO DE ORIGEN
     // -------------------------------------------------------------
-    function fetchJSONP(params) {
-      return new Promise(function(resolve, reject) {
-        var callbackName = 'cb_' + Math.round(1000000 * Math.random());
-        var script = document.createElement('script');
-        
-        // Evita enviar cookies de Workspace o perfiles secundarios
-        script.crossOrigin = "anonymous";
-        script.referrerPolicy = "no-referrer";
+  function fetchJSONP(params) {
+  return new Promise(function(resolve, reject) {
+    var callbackName = 'cb_' + Math.round(1000000 * Math.random());
+    var script = document.createElement('script');
+    
+    // NO poner script.crossOrigin (eso provoca la validación CORS)
+    script.referrerPolicy = "no-referrer";
 
-        window[callbackName] = function(data) {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          resolve(data);
-        };
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
 
-        script.onerror = function() {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          reject(new Error("No se pudo conectar con el servidor"));
-        };
+    script.onerror = function() {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      reject(new Error("No se pudo conectar con el servidor"));
+    };
 
-        var cleanUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
-        var sep = cleanUrl.indexOf('?') >= 0 ? '&' : '?';
-        var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
+    var cleanUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
+    var sep = cleanUrl.indexOf('?') >= 0 ? '&' : '?';
+    var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
 
-        script.src = cleanUrl + sep + cleanParams + '&callback=' + callbackName + '&_nocache=' + Date.now();
-        document.head.appendChild(script);
-      });
-    }
+    script.src = cleanUrl + sep + cleanParams + '&callback=' + callbackName + '&_nocache=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
 
     function obtenerMarcosServidor() {
       return new Promise(function(resolve) {
