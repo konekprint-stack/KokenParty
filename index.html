@@ -421,39 +421,45 @@
       });
     }
 
-    // Subida de imagen final vía fetch POST
-    function sendFile(base64Data, fileName) {
-      return fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "upload",
-          data: base64Data,
-          name: fileName
-        })
-      })
-      .then(res => res.json())
-      .then(res => {
-        if (res && res.success) return res;
-        throw new Error(res ? res.error : "Fallo en Drive");
-      });
-    }
+   // Subida de imagen final
+function sendFile(base64Data, fileName) {
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify({
+      action: "upload",
+      data: base64Data,
+      name: fileName
+    })
+  })
+  .then(res => res.json())
+  .then(res => {
+    if (res && res.success) return res;
+    throw new Error(res ? res.error : "Fallo en Drive");
+  });
+}
 
-    // Subida de respaldo original vía fetch POST
-    function sendBackupFile(base64Data, fileName) {
-      return fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "uploadBackup",
-          data: base64Data,
-          name: fileName
-        })
-      })
-      .then(res => res.json())
-      .then(res => {
-        if (res && res.success) return res;
-        throw new Error(res ? res.error : "Fallo en respaldo de Drive");
-      });
-    }
+// Subida de respaldo original
+function sendBackupFile(base64Data, fileName) {
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify({
+      action: "uploadBackup",
+      data: base64Data,
+      name: fileName
+    })
+  })
+  .then(res => res.json())
+  .then(res => {
+    if (res && res.success) return res;
+    throw new Error(res ? res.error : "Fallo en respaldo de Drive");
+  });
+}
   </script>
 </body>
 </html>
