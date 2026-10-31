@@ -162,12 +162,12 @@
     // -------------------------------------------------------------
     // CONSULTA JSONP ROBUSTA CON AISLAMIENTO DE ORIGEN
     // -------------------------------------------------------------
-  function fetchJSONP(params) {
+function fetchJSONP(params) {
   return new Promise(function(resolve, reject) {
     var callbackName = 'cb_' + Math.round(1000000 * Math.random());
     var script = document.createElement('script');
-    
-    // NO poner script.crossOrigin (eso provoca la validación CORS)
+
+    // IMPORTANTE: NO incluir script.crossOrigin
     script.referrerPolicy = "no-referrer";
 
     window[callbackName] = function(data) {
