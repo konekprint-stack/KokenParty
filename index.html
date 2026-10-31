@@ -2,10 +2,23 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>KonekParty Live</title>
   <style>
-    /* Barra de progreso de subida */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: #0b1120; color: #f8fafc; padding: 25px 12px 60px 12px; text-align: center; }
+    
+    .badge { display: inline-block; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+    h1 { font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 6px; }
+    p.subtitle { font-size: 0.95rem; color: #94a3b8; }
+    
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 22px 16px; max-width: 440px; margin: 25px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+    .btn-upload { background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 15px 20px; border-radius: 12px; font-weight: 700; font-size: 1.05rem; cursor: pointer; display: block; width: 100%; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); }
+    .btn-upload:active { transform: scale(0.98); }
+    input[type="file"] { display: none; }
+    
+    #status { margin-top: 15px; font-size: 0.95rem; font-weight: 600; color: #38bdf8; min-height: 24px; }
+    
     .progress-wrapper {
       width: 100%;
       background-color: #334155;
@@ -28,19 +41,6 @@
       margin-top: 6px;
       line-height: 1.3;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    body { background-color: #0b1120; color: #f8fafc; padding: 25px 12px 60px 12px; text-align: center; }
-    
-    .badge { display: inline-block; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
-    h1 { font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 6px; }
-    p.subtitle { font-size: 0.95rem; color: #94a3b8; }
-    
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 22px 16px; max-width: 440px; margin: 25px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-    .btn-upload { background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 15px 20px; border-radius: 12px; font-weight: 700; font-size: 1.05rem; cursor: pointer; display: block; width: 100%; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); }
-    .btn-upload:active { transform: scale(0.98); }
-    input[type="file"] { display: none; }
-    
-    #status { margin-top: 15px; font-size: 0.95rem; font-weight: 600; color: #38bdf8; min-height: 24px; }
     
     .section-header { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 25px auto 15px auto; padding: 0 5px; }
     .section-title { font-size: 1.2rem; font-weight: 700; color: #e2e8f0; }
@@ -86,7 +86,8 @@
     <button class="modal-close" onclick="closeModal()">✕</button>
     <img id="modalImg" src="" alt="Foto ampliada">
   </div>
- <script>
+  
+  <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlVebJpGHl5N1axZyA5herAgp5HiqYZHpNayxV043IITadQMeih3_1Njqiy--um7_x/exec";
     const EVENT_TOKEN = "BODA2026";
     const WHATSAPP_NUMERO = "525512345678"; 
@@ -109,7 +110,7 @@
       }
     });
 
-    // 1. FUNCIÓN GENÉRICA JSONP (Sin bloqueos de CORS)
+    // 1. CARGA JSONP DE DATOS
     function fetchJSONP(url) {
       return new Promise(function(resolve, reject) {
         const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
@@ -133,7 +134,6 @@
       });
     }
 
-    // 2. OBTENER MARCOS VÍA JSONP
     function obtenerMarcosServidor() {
       return new Promise(function(resolve, reject) {
         fetchJSONP(SCRIPT_URL + "?action=getFrames&access=" + EVENT_TOKEN)
@@ -171,7 +171,6 @@
       });
     }
 
-    // 3. CARGAR GALERÍA VÍA JSONP
     function loadGallery() {
       const container = document.getElementById('gallery');
       container.innerHTML = '<p style="grid-column: 1/-1; color: #38bdf8; font-size: 0.9rem; padding: 25px 0;">⏳ Buscando fotos...</p>';
@@ -210,7 +209,7 @@
       document.getElementById('modalImg').src = "";
     }
 
-    // 4. FLUJO DE PROCESAMIENTO Y SUBIDA
+    // 2. FUNCIÓN DE SUBIDA (startUpload)
     async function startUpload(files) {
       if (!files || files.length === 0) return;
 
@@ -239,10 +238,10 @@
           const framedBase64 = await processWithFrame(file);
 
           status.innerText = '☁️ Guardando respaldo ' + (i + 1) + ' de ' + files.length + '...';
-          await sendBackupFile(originalBase64, "RAW_" + file.name);
+          await uploadToAppsScript("uploadBackup", originalBase64, "RAW_" + file.name);
 
           status.innerText = '☁️ Guardando postal ' + (i + 1) + ' de ' + files.length + '...';
-          await sendFile(framedBase64, "KP_" + file.name);
+          await uploadToAppsScript("upload", framedBase64, "KP_" + file.name);
 
           subidasConExito++;
         } catch (e) {
@@ -301,7 +300,6 @@
           const userImg = new Image();
           userImg.onerror = function() { reject(new Error("Formato de imagen inválido")); };
           userImg.onload = function() {
-            
             const waUrl = "https://wa.me/" + WHATSAPP_NUMERO + "?text=" + encodeURIComponent(WHATSAPP_MENSAJE);
             const qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=2&data=" + encodeURIComponent(waUrl);
 
@@ -392,104 +390,4 @@
                   ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
                   ctx.shadowBlur = 6;
                   ctx.shadowOffsetX = 1;
-                  ctx.shadowOffsetY = 2;
-
-                  ctx.fillStyle = "#ffffff";
-                  const fontTitleSize = Math.max(22, Math.round(targetW * 0.043));
-                  ctx.font = 'bold ' + fontTitleSize + 'px sans-serif';
-                  ctx.textAlign = "center";
-                  ctx.textBaseline = "middle";
-                  ctx.fillText(tituloEvento, targetW / 2, targetH * 0.835);
-
-                  ctx.fillStyle = "#cbd5e1";
-                  const fontSubSize = Math.max(13, Math.round(fontTitleSize * 0.54));
-                  ctx.font = '500 ' + fontSubSize + 'px sans-serif';
-                  ctx.fillText(subtituloEvento, targetW / 2, targetH * 0.868);
-
-                  ctx.shadowColor = "transparent";
-                  const baseY = targetH * 0.945;
-                  const qrSize = Math.max(90, Math.round(targetW * 0.10));
-
-                  if (loadedQr) {
-                    const padding = 5;
-                    const qrX = (targetW / 2) - qrSize - 40;
-                    const qrY = baseY - (qrSize / 2);
-
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(qrX - padding, qrY - padding, qrSize + (padding * 2), qrSize + (padding * 2));
-                    ctx.drawImage(loadedQr, qrX, qrY, qrSize, qrSize);
-
-                    ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
-                    const fontBrandSize = Math.max(14, Math.round(targetW * 0.024));
-                    ctx.font = 'bold ' + fontBrandSize + 'px sans-serif';
-                    ctx.textAlign = "left";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(firmaMarca, qrX + qrSize + 14, baseY - 8);
-
-                    ctx.fillStyle = "#94a3b8";
-                    const fontTipSize = Math.max(11, Math.round(fontBrandSize * 0.72));
-                    ctx.font = '500 ' + fontTipSize + 'px sans-serif';
-                    ctx.fillText("Escanea para informes", qrX + qrSize + 14, baseY + 10);
-                  }
-                }
-
-                resolve(canvas.toDataURL('image/jpeg', 0.90));
-              } catch (canvasErr) {
-                reject(new Error("Error procesando imagen: " + canvasErr.message));
-              }
-            }
-          };
-          userImg.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // 5. ENVÍO DE ARCHIVOS
- function sendFile(base64Data, fileName) {
-  return fetch(SCRIPT_URL, {
-    method: "POST",
-    mode: "cors",
-    redirect: "follow",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({
-      action: "upload",
-      data: base64Data,
-      name: fileName
-    })
-  })
-  .then(function(res) {
-    return res.json();
-  })
-  .then(function(res) {
-    if (res && res.success) return res;
-    throw new Error(res ? res.error : "Error en el servidor de Drive");
-  });
-}
-
-function sendBackupFile(base64Data, fileName) {
-  return fetch(SCRIPT_URL, {
-    method: "POST",
-    mode: "cors",
-    redirect: "follow",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({
-      action: "uploadBackup",
-      data: base64Data,
-      name: fileName
-    })
-  })
-  .then(function(res) {
-    return res.json();
-  })
-  .then(function(res) {
-    if (res && res.success) return res;
-    throw new Error(res ? res.error : "Error en respaldo de Drive");
-  });
-}
- </body>
-</html>
+                  ctx.shadowOffsetY =
