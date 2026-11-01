@@ -153,36 +153,35 @@
     // -------------------------------------------------------------
     // FUNCIÓN JSONP CON AISLAMIENTO DE ORIGEN
     // -------------------------------------------------------------
-    function fetchJSONP(params) {
-      return new Promise(function(resolve, reject) {
-        var callbackName = 'cb_' + Math.round(1000000 * Math.random());
-        var script = document.createElement('script');
-        
-        // Bloquea el envío de cookies de cuentas corporativas
-        script.crossOrigin = "anonymous";
-        script.referrerPolicy = "no-referrer";
+   function fetchJSONP(params) {
+  return new Promise(function(resolve, reject) {
+    var callbackName = 'cb_' + Math.round(1000000 * Math.random());
+    var script = document.createElement('script');
+    
+    // Evita que el navegador arrastre cookies corporativas hacia Google
+    script.crossOrigin = "anonymous";
+    script.referrerPolicy = "no-referrer";
 
-        window[callbackName] = function(data) {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          resolve(data);
-        };
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
 
-        script.onerror = function() {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          reject(new Error("No se pudo conectar con el servidor"));
-        };
+    script.onerror = function() {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      reject(new Error("No se pudo conectar con el servidor"));
+    };
 
-        var cleanUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
-        var sep = cleanUrl.indexOf('?') >= 0 ? '&' : '?';
-        var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
+    var cleanUrl = SCRIPT_URL.trim().replace(/\/+$/, '');
+    var sep = cleanUrl.indexOf('?') >= 0 ? '&' : '?';
+    var cleanParams = params.indexOf('&') === 0 ? params.substring(1) : params;
 
-        script.src = cleanUrl + sep + cleanParams + '&callback=' + callbackName + '&_nocache=' + Date.now();
-        document.head.appendChild(script);
-      });
-    }
-
+    script.src = cleanUrl + sep + cleanParams + '&callback=' + callbackName + '&_nocache=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
     function obtenerMarcosServidor() {
       return new Promise(function(resolve) {
         fetchJSONP("action=getFrames&access=" + EVENT_TOKEN)
@@ -487,22 +486,22 @@
       });
     }
 
-    function uploadToAppsScript(action, base64Data, fileName) {
-      var params = new URLSearchParams();
-      params.append("action", action);
-      params.append("data", base64Data);
-      params.append("name", fileName);
-      params.append("access", EVENT_TOKEN);
+   function uploadToAppsScript(action, base64Data, fileName) {
+  var params = new URLSearchParams();
+  params.append("action", action);
+  params.append("data", base64Data);
+  params.append("name", fileName);
+  params.append("access", EVENT_TOKEN);
 
-      return fetch(SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: params.toString()
-      });
-    }
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: params.toString()
+  });
+}
   </script>
 </body>
 </html>
